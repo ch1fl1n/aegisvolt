@@ -1,0 +1,6 @@
+# Fuerza finales de línea LF en el repo. Sin esto, Windows guarda CRLF y los
+# scripts .sh y los archivos que entran a los contenedores Linux fallan.
+* text=auto eol=lf
+*.ps1 text eol=crlf
+*.png binary
+*.jpg binary

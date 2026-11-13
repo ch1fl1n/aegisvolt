@@ -1,0 +1,37 @@
+[project]
+name = "aegisvolt"
+version = "0.1.0"
+description = "Plataforma cloud-native de gestión de carga para flotas eléctricas"
+requires-python = ">=3.12,<3.13"
+dependencies = []
+
+[dependency-groups]
+dev = [
+    "boto3==1.40.*",
+    "httpx==0.28.*",
+    "pytest==8.4.*",
+    "pytest-asyncio==1.2.*",
+    "ruff==0.14.*",
+    "pre-commit==4.3.*",
+]
+
+[tool.uv]
+package = false
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "S", "UP"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+markers = [
+    "integration: requiere Floci levantado",
+    "e2e: requiere el stack completo",
+]

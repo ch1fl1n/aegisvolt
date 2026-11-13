@@ -1,0 +1,34 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Terraform (el .terraform.lock.hcl SÍ se versiona)
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+plan.out
+plan.json
+crash.log
+override.tf
+override.tf.json
+
+# Secretos y entorno local
+.env
+*.pem
+*.key
+
+# Frontend
+node_modules/
+dist/
+
+# Editor / SO
+.idea/
+.vscode/
+.kiro/
+.DS_Store

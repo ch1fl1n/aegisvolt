@@ -1,0 +1,19 @@
+# Nube AWS emulada localmente (Floci). Solo escucha en 127.0.0.1.
+services:
+  floci:
+    image: floci/floci:2.4.0
+    container_name: floci
+    ports:
+      - "127.0.0.1:4566:4566"
+    environment:
+      FLOCI_HOSTNAME: floci
+      FLOCI_DEFAULT_REGION: us-east-1
+      FLOCI_STORAGE_MODE: persistent
+      FLOCI_STORAGE_PERSISTENT_PATH: /app/data
+      FLOCI_SERVICES_EKS_MOCK: "true"
+    volumes:
+      - floci-data:/app/data
+    restart: unless-stopped
+
+volumes:
+  floci-data:
