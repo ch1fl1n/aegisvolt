@@ -24,3 +24,20 @@ module "network" {
   azs                = var.azs
   enable_nat_gateway = false
 }
+
+# ---------------------------------------------------------------
+# VPC Endpoints: acceso privado a S3, DynamoDB, API Gateway y CloudWatch
+# ---------------------------------------------------------------
+module "vpc_endpoints" {
+  source = "../modules/vpc_endpoints"
+
+  name_prefix             = local.name_prefix
+  project                 = var.project
+  env                     = local.env
+  region                  = var.region
+  vpc_id                  = module.network.vpc_id
+  vpc_cidr                = module.network.vpc_cidr
+  private_subnet_ids      = module.network.private_subnet_ids
+  private_route_table_ids = [module.network.private_route_table_id]
+  private_dns_enabled     = var.vpce_private_dns_enabled
+}

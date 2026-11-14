@@ -20,3 +20,13 @@ output "vpc_id" {
 output "private_subnet_ids" {
   value = module.network.private_subnet_ids
 }
+
+output "vpc_endpoint_ids" {
+  value = merge(
+    {
+      s3       = module.vpc_endpoints.s3_endpoint_id
+      dynamodb = module.vpc_endpoints.dynamodb_endpoint_id
+    },
+    module.vpc_endpoints.interface_endpoint_ids,
+  )
+}
