@@ -95,3 +95,16 @@ module "observability" {
   orchestrator_service = "graphql-gateway"
   retention_days       = local.cfg.log_retention_days
 }
+
+# ---------------------------------------------------------------
+# Clúster EKS del ambiente (en Floci: plano de control en modo mock)
+# ---------------------------------------------------------------
+module "eks" {
+  source = "../modules/eks"
+
+  name_prefix        = local.name_prefix
+  vpc_id             = module.network.vpc_id
+  vpc_cidr           = module.network.vpc_cidr
+  private_subnet_ids = module.network.private_subnet_ids
+  create_node_group  = var.eks_create_node_group
+}

@@ -42,3 +42,7 @@ output "log_groups" {
 output "metrics_namespace" {
   value = module.observability.metrics_namespace
 }
+
+output "eks_cluster_name" {
+  value = module.eks.cluster_name
+}
