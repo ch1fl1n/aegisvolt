@@ -33,3 +33,9 @@ variable "vpce_private_dns_enabled" {
   type        = bool
   default     = true
 }
+
+variable "eks_create_node_group" {
+  description = "Crear nodos administrados de EKS (en Floci los pods corren en minikube)"
+  type        = bool
+  default     = true
+}
