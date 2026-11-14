@@ -14,6 +14,7 @@ dev = [
     "ruff==0.14.*",
     "pre-commit==4.3.*",
     "aegis-common",
+    "uvicorn[standard]==0.38.*",
 ]
 
 [tool.uv]
@@ -27,7 +28,7 @@ target-version = "py312"
 select = ["E", "F", "I", "B", "S", "UP"]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["S101"]
+"**/tests/**" = ["S101"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -44,4 +45,4 @@ members = ["libs/aegis_common"]
 aegis-common = { workspace = true }
 
 [tool.ruff.lint.isort]
-known-first-party = ["aegis_common"]
+known-first-party = ["aegis_common", "app"]
