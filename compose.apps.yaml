@@ -1,0 +1,83 @@
+# Stack completo en contenedores: se combina con compose.yaml (Floci) en el MISMO proyecto,
+# así comparten la red y los servicios llegan a Floci como http://floci:4566.
+#
+#   docker compose -f compose.yaml -f compose.apps.yaml up -d --build
+#   uv run python scripts/seed.py
+#   uv run pytest tests/e2e -v
+#   docker compose -f compose.yaml -f compose.apps.yaml down      (los datos de Floci quedan)
+#
+# Los puertos del host (8000-8003) son los mismos que con scripts/run_services.py,
+# por eso las pruebas e2e funcionan sin cambios contra los contenedores.
+
+x-service: &service
+  restart: unless-stopped
+  read_only: true # sistema de archivos de solo lectura (igual que en Kubernetes)
+  tmpfs:
+    - /tmp
+  security_opt:
+    - no-new-privileges:true
+  cap_drop:
+    - ALL
+  mem_limit: 256m # 5,8 GB de RAM en el equipo: límites explícitos
+  cpus: 0.5
+  environment: &env
+    AEGIS_ENV: ${AEGIS_ENV:-dev}
+    SERVICE_VERSION: ${SERVICE_VERSION:-v1}
+    AWS_ENDPOINT_URL: http://floci:4566
+    AWS_DEFAULT_REGION: us-east-1
+    AWS_ACCESS_KEY_ID: test # credenciales FALSAS: solo Floci
+    AWS_SECRET_ACCESS_KEY: test
+    CLOUDWATCH_LOGS_ENABLED: "true"
+  depends_on:
+    floci:
+      condition: service_started
+
+services:
+  station-reservation-service:
+    <<: *service
+    build:
+      context: .
+      dockerfile: services/station-reservation-service/Dockerfile
+    image: aegisvolt/station-reservation-service:${SERVICE_VERSION:-v1}
+    ports:
+      - "127.0.0.1:8001:8000"
+
+  billing-wallet-service:
+    <<: *service
+    build:
+      context: .
+      dockerfile: services/billing-wallet-service/Dockerfile
+    image: aegisvolt/billing-wallet-service:${SERVICE_VERSION:-v1}
+    ports:
+      - "127.0.0.1:8002:8000"
+
+  energy-dispatch-service:
+    <<: *service
+    build:
+      context: .
+      dockerfile: services/energy-dispatch-service/Dockerfile
+    image: aegisvolt/energy-dispatch-service:${SERVICE_VERSION:-v1}
+    ports:
+      - "127.0.0.1:8003:8000"
+
+  graphql-gateway:
+    <<: *service
+    build:
+      context: .
+      dockerfile: services/graphql-gateway/Dockerfile
+    image: aegisvolt/graphql-gateway:${SERVICE_VERSION:-v1}
+    ports:
+      - "127.0.0.1:8000:8000"
+    environment:
+      <<: *env
+      RESERVATIONS_URL: http://station-reservation-service:8000
+      BILLING_URL: http://billing-wallet-service:8000
+      DISPATCH_URL: http://energy-dispatch-service:8000
+      ADMIN_TOKEN: ${ADMIN_TOKEN:?Falta ADMIN_TOKEN en .env}
+    depends_on:
+      station-reservation-service:
+        condition: service_healthy
+      billing-wallet-service:
+        condition: service_healthy
+      energy-dispatch-service:
+        condition: service_healthy
