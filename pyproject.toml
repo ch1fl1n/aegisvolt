@@ -13,6 +13,7 @@ dev = [
     "pytest-asyncio==1.2.*",
     "ruff==0.14.*",
     "pre-commit==4.3.*",
+    "aegis-common",
 ]
 
 [tool.uv]
@@ -35,3 +36,12 @@ markers = [
     "integration: requiere Floci levantado",
     "e2e: requiere el stack completo",
 ]
+
+[tool.uv.workspace]
+members = ["libs/aegis_common"]
+
+[tool.uv.sources]
+aegis-common = { workspace = true }
+
+[tool.ruff.lint.isort]
+known-first-party = ["aegis_common"]
