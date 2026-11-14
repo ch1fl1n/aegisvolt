@@ -30,3 +30,7 @@ output "vpc_endpoint_ids" {
     module.vpc_endpoints.interface_endpoint_ids,
   )
 }
+
+output "dynamodb_tables" {
+  value = module.dynamodb.table_names
+}

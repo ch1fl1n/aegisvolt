@@ -41,3 +41,44 @@ module "vpc_endpoints" {
   private_route_table_ids = [module.network.private_route_table_id]
   private_dns_enabled     = var.vpce_private_dns_enabled
 }
+
+# ---------------------------------------------------------------
+# DynamoDB: una tabla por servicio y por ambiente (Database-per-Service)
+# ---------------------------------------------------------------
+module "dynamodb" {
+  source = "../modules/dynamodb"
+
+  project             = var.project
+  env                 = local.env
+  deletion_protection = local.cfg.deletion_protection
+
+  tables = {
+    reservations = {
+      hash_key   = "station_id"
+      range_key  = "connector_id"
+      attributes = { station_id = "S", connector_id = "S", saga_id = "S" }
+      gsis       = [{ name = "by-saga", hash_key = "saga_id" }]
+    }
+    billing = {
+      hash_key   = "account_id"
+      range_key  = "sk"
+      attributes = { account_id = "S", sk = "S", saga_id = "S" }
+      gsis       = [{ name = "by-saga", hash_key = "saga_id" }]
+    }
+    dispatch = {
+      hash_key      = "saga_id"
+      range_key     = "sk"
+      attributes    = { saga_id = "S", sk = "S" }
+      ttl_attribute = "expires_at"
+    }
+    sagas = {
+      hash_key   = "saga_id"
+      attributes = { saga_id = "S", status = "S", updated_at = "S" }
+      gsis       = [{ name = "by-status", hash_key = "status", range_key = "updated_at" }]
+    }
+    flags = {
+      hash_key   = "flag_name"
+      attributes = { flag_name = "S" }
+    }
+  }
+}
