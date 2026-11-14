@@ -46,3 +46,15 @@ output "metrics_namespace" {
 output "eks_cluster_name" {
   value = module.eks.cluster_name
 }
+
+output "api_id" {
+  value = module.api_gateway.api_id
+}
+
+output "api_endpoint" {
+  value = module.api_gateway.api_endpoint
+}
+
+output "nlb_dns_name" {
+  value = module.api_gateway.nlb_dns_name
+}

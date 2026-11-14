@@ -108,3 +108,20 @@ module "eks" {
   private_subnet_ids = module.network.private_subnet_ids
   create_node_group  = var.eks_create_node_group
 }
+
+# ---------------------------------------------------------------
+# API Gateway -> VPC Link -> NLB interno -> Ingress del clúster
+# ---------------------------------------------------------------
+module "api_gateway" {
+  source = "../modules/api_gateway"
+
+  project            = var.project
+  env                = local.env
+  name_prefix        = local.name_prefix
+  vpc_id             = module.network.vpc_id
+  vpc_cidr           = module.network.vpc_cidr
+  private_subnet_ids = module.network.private_subnet_ids
+  ingress_target_ip  = var.ingress_target_ip
+  cors_allow_origins = var.cors_allow_origins
+  log_retention_days = local.cfg.log_retention_days
+}
