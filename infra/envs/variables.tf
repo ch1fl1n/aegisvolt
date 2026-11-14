@@ -39,3 +39,15 @@ variable "eks_create_node_group" {
   type        = bool
   default     = true
 }
+
+variable "ingress_target_ip" {
+  description = "IP del Ingress del clúster (minikube en local). Vacío hasta el Bloque D."
+  type        = string
+  default     = ""
+}
+
+variable "cors_allow_origins" {
+  description = "Orígenes del frontend autorizados a llamar a la API"
+  type        = list(string)
+  default     = ["http://localhost:5173"]
+}
