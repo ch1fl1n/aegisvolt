@@ -13,4 +13,14 @@ resource "terraform_data" "workspace_guard" {
   }
 }
 
-# Los módulos (network, vpc_endpoints, dynamodb, ...) se agregan en los siguientes pasos.
+# ---------------------------------------------------------------
+# Red del ambiente
+# ---------------------------------------------------------------
+module "network" {
+  source = "../modules/network"
+
+  name_prefix        = local.name_prefix
+  vpc_cidr           = local.cfg.vpc_cidr
+  azs                = var.azs
+  enable_nat_gateway = false
+}

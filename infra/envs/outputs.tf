@@ -12,3 +12,11 @@ output "vpc_cidr" {
   description = "Rango de red reservado para este ambiente"
   value       = local.cfg.vpc_cidr
 }
+
+output "vpc_id" {
+  value = module.network.vpc_id
+}
+
+output "private_subnet_ids" {
+  value = module.network.private_subnet_ids
+}
