@@ -1,4 +1,4 @@
-"""Modelos del dominio y contratos de entrada (validados por Pydantic)."""
+"""Modelos del dominio y contratos de entrada/salida (validados por Pydantic)."""
 
 from __future__ import annotations
 
@@ -8,7 +8,8 @@ from typing import Annotated
 from pydantic import BaseModel, Field
 
 # IDs con formato seguro: evita claves raras en DynamoDB y log injection.
-SafeId = Annotated[str, Field(pattern=r"^[A-Za-z0-9-]{1,64}$")]
+ID_PATTERN = r"^[A-Za-z0-9-]{1,64}$"
+SafeId = Annotated[str, Field(pattern=ID_PATTERN)]
 
 
 class ConnectorStatus(StrEnum):
@@ -47,3 +48,8 @@ class ReleaseRequest(BaseModel):
     saga_id: SafeId
     station_id: SafeId
     connector_id: SafeId
+
+
+class ReleaseResult(BaseModel):
+    saga_id: str
+    released: bool  # False = ya estaba liberado (idempotente), no es error
