@@ -12,9 +12,10 @@ import anyio
 
 
 class Flag(StrEnum):
-    DYNAMIC_SURGE_PRICING = "ENABLE_DYNAMIC_SURGE_PRICING"
-    FAST_CHARGE_BOOST = "ENABLE_FAST_CHARGE_BOOST"
-    SIMULATE_CHARGER_FAULT = "SIMULATE_CHARGER_HARDWARE_FAULT"
+    # Nombre del miembro == valor: GraphQL expone el NOMBRE, y así coincide con la guía.
+    ENABLE_DYNAMIC_SURGE_PRICING = "ENABLE_DYNAMIC_SURGE_PRICING"
+    ENABLE_FAST_CHARGE_BOOST = "ENABLE_FAST_CHARGE_BOOST"
+    SIMULATE_CHARGER_HARDWARE_FAULT = "SIMULATE_CHARGER_HARDWARE_FAULT"
 
 
 # Flag ausente en la tabla = apagada (el comportamiento seguro por defecto).
