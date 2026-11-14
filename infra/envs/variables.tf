@@ -27,3 +27,9 @@ variable "azs" {
   type        = list(string)
   default     = ["us-east-1a", "us-east-1b"]
 }
+
+variable "vpce_private_dns_enabled" {
+  description = "Private DNS en los endpoints Interface (en AWS real siempre true)"
+  type        = bool
+  default     = true
+}
