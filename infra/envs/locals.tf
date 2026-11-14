@@ -1,6 +1,14 @@
 locals {
   allowed_envs = ["dev", "test", "prod"]
 
+  # Componentes desplegables (nombres de la guía + capa GraphQL)
+  services = [
+    "graphql-gateway",
+    "station-reservation-service",
+    "billing-wallet-service",
+    "energy-dispatch-service",
+  ]
+
   # El ambiente SALE del workspace: nunca se escribe a mano.
   env         = terraform.workspace
   name_prefix = "${var.project}-${local.env}" # p. ej. aegisvolt-test

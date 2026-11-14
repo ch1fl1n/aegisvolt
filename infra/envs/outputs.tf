@@ -34,3 +34,11 @@ output "vpc_endpoint_ids" {
 output "dynamodb_tables" {
   value = module.dynamodb.table_names
 }
+
+output "log_groups" {
+  value = module.observability.log_group_names
+}
+
+output "metrics_namespace" {
+  value = module.observability.metrics_namespace
+}

@@ -82,3 +82,16 @@ module "dynamodb" {
     }
   }
 }
+
+# ---------------------------------------------------------------
+# Observabilidad: log groups por ambiente y métricas para el canary
+# ---------------------------------------------------------------
+module "observability" {
+  source = "../modules/observability"
+
+  project              = var.project
+  env                  = local.env
+  services             = local.services
+  orchestrator_service = "graphql-gateway"
+  retention_days       = local.cfg.log_retention_days
+}
