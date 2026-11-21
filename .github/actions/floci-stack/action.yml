@@ -1,0 +1,46 @@
+# Floci EFÍMERO dentro del runner de GitHub + la infraestructura del ambiente con Terraform.
+# Lo usan integration-tests y e2e-tests: cada ejecución parte de una nube vacía y la crea
+# con el MISMO código de infra/ que usamos en local (si Terraform falla, la prueba falla).
+name: floci-stack
+description: Levanta Floci y aplica infra/bootstrap + infra/envs en un workspace
+inputs:
+  workspace:
+    description: workspace de Terraform (dev, test o prod)
+    default: dev
+runs:
+  using: composite
+  steps:
+    - name: Levantar Floci
+      shell: bash
+      run: |
+        docker run -d --name floci -p 127.0.0.1:4566:4566 \
+          -e FLOCI_DEFAULT_REGION=us-east-1 \
+          -e FLOCI_SERVICES_EKS_MOCK=true \
+          floci/floci:2.4.0
+        for i in $(seq 1 60); do
+          curl -fsS http://localhost:4566/_floci/health >/dev/null && exit 0
+          sleep 1
+        done
+        docker logs floci; echo "Floci no arrancó"; exit 1
+
+    - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3
+      with:
+        terraform_version: 1.16.6
+        terraform_wrapper: false
+
+    - name: Terraform bootstrap (bucket del estado)
+      shell: bash
+      working-directory: infra/bootstrap
+      env: { AWS_ACCESS_KEY_ID: test, AWS_SECRET_ACCESS_KEY: test, AWS_DEFAULT_REGION: us-east-1 }
+      run: |
+        terraform init -input=false
+        terraform apply -input=false -auto-approve -var-file=floci.tfvars
+
+    - name: Terraform apply (${{ inputs.workspace }})
+      shell: bash
+      working-directory: infra/envs
+      env: { AWS_ACCESS_KEY_ID: test, AWS_SECRET_ACCESS_KEY: test, AWS_DEFAULT_REGION: us-east-1 }
+      run: |
+        terraform init -input=false -backend-config=backend-floci.hcl
+        terraform workspace select -or-create ${{ inputs.workspace }}
+        terraform apply -input=false -auto-approve -var-file=floci.tfvars

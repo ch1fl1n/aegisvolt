@@ -1,0 +1,28 @@
+# Base común a dev, test y prod. Cada overlay pone namespace, AEGIS_ENV y host.
+#   kubectl apply -k k8s/overlays/dev     (lo hace scripts/deploy.py)
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+labels:
+  - pairs:
+      app.kubernetes.io/part-of: aegisvolt
+    includeSelectors: false
+
+resources:
+  - floci.yaml
+  - backends.yaml
+  - gateway.yaml
+  - frontend.yaml
+  - ingress.yaml
+  - networkpolicy.yaml
+  - limits.yaml
+
+# El hash en el nombre fuerza un rollout cuando cambia la configuración.
+configMapGenerator:
+  - name: aegis-config
+    literals:
+      - AEGIS_ENV=dev
+      - AWS_ENDPOINT_URL=http://floci:4566
+      - AWS_DEFAULT_REGION=us-east-1
+      - CLOUDWATCH_LOGS_ENABLED=true
+      - LOG_LEVEL=INFO

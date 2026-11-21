@@ -26,9 +26,11 @@ override.tf.json
 # Frontend
 node_modules/
 dist/
+*.tsbuildinfo
 
 # Editor / SO
 .idea/
 .vscode/
 .kiro/
 .DS_Store
+k8s/.render-*/

@@ -65,8 +65,13 @@ resource "aws_lb_target_group" "ingress" {
   target_type = "ip"
   vpc_id      = var.vpc_id
 
+  # HTTP y no TCP: confirma que el ingress-nginx RESPONDE (no solo que el puerto abre).
+  # Además Floci devuelve matcher en checks TCP y el provider rechaza esa combinación.
   health_check {
-    protocol            = "TCP"
+    protocol            = "HTTP"
+    port                = "traffic-port"
+    path                = "/healthz" # respuesta 200 del servidor por defecto de ingress-nginx
+    matcher             = "200"
     healthy_threshold   = 2
     unhealthy_threshold = 2
     interval            = 10

@@ -1,0 +1,160 @@
+# Gateway GraphQL en dos pistas:
+#   stable  -> recibe el tráfico normal (Ingress principal).
+#   canary  -> 0 réplicas en reposo; scripts/canary.py le pone la versión nueva, la escala a 1
+#              y le manda un % del tráfico con el Ingress canary. Promueve o revierte solo.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: graphql-gateway
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: graphql-gateway
+      track: stable
+  template:
+    metadata:
+      labels:
+        app: graphql-gateway
+        track: stable
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: app
+          image: aegisvolt/graphql-gateway:v1
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8000
+          env:
+            - { name: RESERVATIONS_URL, value: http://station-reservation-service:8000 }
+            - { name: BILLING_URL, value: http://billing-wallet-service:8000 }
+            - { name: DISPATCH_URL, value: http://energy-dispatch-service:8000 }
+          envFrom:
+            - configMapRef:
+                name: aegis-config
+            - secretRef:
+                name: aws-credentials
+            - secretRef:
+                name: gateway-admin # ADMIN_TOKEN: solo el gateway lo recibe
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests: { cpu: 50m, memory: 128Mi }
+            limits: { cpu: 500m, memory: 192Mi }
+          readinessProbe:
+            httpGet: { path: /readyz, port: http }
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 6 # 30 s de tolerancia: con el nodo cargado DynamoDB responde lento
+          # Arranque lento con CPU limitada: hasta 180 s antes de que liveness pueda matarlo.
+          startupProbe:
+            httpGet: { path: /healthz, port: http }
+            periodSeconds: 3
+            failureThreshold: 60
+          livenessProbe:
+            httpGet: { path: /healthz, port: http }
+            periodSeconds: 10
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
+      volumes:
+        - { name: tmp, emptyDir: { sizeLimit: 16Mi } }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: graphql-gateway
+spec:
+  selector:
+    app: graphql-gateway
+    track: stable
+  ports:
+    - { name: http, port: 8000, targetPort: http }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: graphql-gateway-canary
+spec:
+  replicas: 0 # en reposo; canary.py la escala
+  selector:
+    matchLabels:
+      app: graphql-gateway
+      track: canary
+  template:
+    metadata:
+      labels:
+        app: graphql-gateway
+        track: canary
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: app
+          image: aegisvolt/graphql-gateway:v1
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8000
+          env:
+            - { name: CHAOS_ERROR_RATE, value: "0" }
+            - { name: RESERVATIONS_URL, value: http://station-reservation-service:8000 }
+            - { name: BILLING_URL, value: http://billing-wallet-service:8000 }
+            - { name: DISPATCH_URL, value: http://energy-dispatch-service:8000 }
+          envFrom:
+            - configMapRef:
+                name: aegis-config
+            - secretRef:
+                name: aws-credentials
+            - secretRef:
+                name: gateway-admin
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests: { cpu: 50m, memory: 128Mi }
+            limits: { cpu: 500m, memory: 192Mi }
+          readinessProbe:
+            httpGet: { path: /readyz, port: http }
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 6 # 30 s de tolerancia: con el nodo cargado DynamoDB responde lento
+          # Arranque lento con CPU limitada: hasta 180 s antes de que liveness pueda matarlo.
+          startupProbe:
+            httpGet: { path: /healthz, port: http }
+            periodSeconds: 3
+            failureThreshold: 60
+          livenessProbe:
+            httpGet: { path: /healthz, port: http }
+            periodSeconds: 10
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
+      volumes:
+        - { name: tmp, emptyDir: { sizeLimit: 16Mi } }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: graphql-gateway-canary
+spec:
+  selector:
+    app: graphql-gateway
+    track: canary
+  ports:
+    - { name: http, port: 8000, targetPort: http }

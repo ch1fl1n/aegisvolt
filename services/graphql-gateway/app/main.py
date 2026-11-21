@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-from collections.abc import AsyncIterator
+import random
+from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
 from typing import Any
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI, HTTPException
 from strawberry.fastapi import GraphQLRouter
 
 from aegis_common import aws
@@ -35,6 +36,17 @@ def build_deps(settings: GatewaySettings) -> Deps:
     )
 
 
+def chaos_dependency(rate: float) -> Callable[[], Awaitable[None]]:
+    """Responde 500 en una fracción `rate` de peticiones. Corre DENTRO del middleware,
+    así cada 500 queda en el log http_request y el canary lo cuenta como error."""
+
+    async def chaos() -> None:
+        if rate > 0 and random.random() < rate:  # noqa: S311 (no es criptografía)
+            raise HTTPException(status_code=500, detail="Falla inducida (CHAOS_ERROR_RATE)")
+
+    return chaos
+
+
 def build(settings: GatewaySettings | None = None, deps: Deps | None = None) -> FastAPI:
     """Arma la app. En pruebas se inyectan dependencias falsas."""
     settings = settings or get_settings()
@@ -60,6 +72,7 @@ def build(settings: GatewaySettings | None = None, deps: Deps | None = None) -> 
         context_getter=get_context,
         graphql_ide=None if settings.env == "prod" else "graphiql",
         allow_queries_via_get=False,  # solo POST: nada de consultas en URLs (logs, caché)
+        dependencies=[Depends(chaos_dependency(settings.effective_chaos_rate))],
     )
     app.include_router(graphql, prefix="/graphql")
 
