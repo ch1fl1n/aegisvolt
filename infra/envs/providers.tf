@@ -20,6 +20,7 @@ provider "aws" {
       apigatewayv2 = endpoints.value
       logs         = endpoints.value
       cloudwatch   = endpoints.value
+      kms          = endpoints.value # llave del cifrado de secretos del EKS
     }
   }
 

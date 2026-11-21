@@ -12,7 +12,10 @@ RUN /opt/venv/bin/pip install -r /tmp/requirements.txt /tmp/aegis_common
 
 # ---------- etapa 2: imagen final mínima, sin compiladores ni pip cache ----------
 FROM python:3.12-slim
-ENV PATH=/opt/venv/bin:$PATH \
+# La versión viaja DENTRO de la imagen: --build-arg SERVICE_VERSION=<tag>
+ARG SERVICE_VERSION=v1
+ENV SERVICE_VERSION=${SERVICE_VERSION} \
+    PATH=/opt/venv/bin:$PATH \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     SERVICE_NAME=graphql-gateway
