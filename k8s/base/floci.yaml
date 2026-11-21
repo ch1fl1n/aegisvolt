@@ -1,0 +1,12 @@
+# Floci corre FUERA del clúster (contenedor de Docker Compose). Este Service sin selector
+# le da un nombre DNS dentro de Kubernetes: http://floci:4566. La IP real la pone
+# scripts/deploy.py en un EndpointSlice, después de conectar la red de minikube con Floci (R3).
+apiVersion: v1
+kind: Service
+metadata:
+  name: floci
+spec:
+  ports:
+    - name: http
+      port: 4566
+      targetPort: 4566

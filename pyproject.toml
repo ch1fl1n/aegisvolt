@@ -21,6 +21,9 @@ dev = [
 
 [tool.uv]
 package = false
+# Prefect NO va en este entorno: su server 3.4 choca con el FastAPI de los servicios
+# (Body(min_items) eliminado). Vive aislado en observability/prefect/.venv (requirements.txt).
+default-groups = ["dev"]
 
 [tool.ruff]
 line-length = 100

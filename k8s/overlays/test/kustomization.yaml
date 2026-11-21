@@ -1,0 +1,23 @@
+# Overlay test : namespace aegisvolt-test, AEGIS_ENV=test, host test.aegisvolt.local
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: aegisvolt-test
+
+resources:
+  - namespace.yaml
+  - ../../base
+
+configMapGenerator:
+  - name: aegis-config
+    behavior: merge
+    literals:
+      - AEGIS_ENV=test
+
+patches:
+  - target:
+      kind: Ingress
+    patch: |-
+      - op: replace
+        path: /spec/rules/0/host
+        value: test.aegisvolt.local

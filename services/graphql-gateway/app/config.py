@@ -18,6 +18,13 @@ class GatewaySettings(Settings):
     flags_cache_ttl_s: float = Field(default=5.0, ge=0, le=60, alias="FLAGS_CACHE_TTL_S")
     # Token para cambiar flags (paso 6c). SecretStr: nunca se imprime en logs.
     admin_token: SecretStr | None = Field(default=None, alias="ADMIN_TOKEN")
+    # Falla inducida: fracción de peticiones a /graphql que responden 500. Solo sirve para
+    # demostrar el rollback automático del canary. En prod se ignora siempre.
+    chaos_error_rate: float = Field(default=0.0, ge=0, le=1, alias="CHAOS_ERROR_RATE")
+
+    @property
+    def effective_chaos_rate(self) -> float:
+        return 0.0 if self.env == "prod" else self.chaos_error_rate
 
     @property
     def sagas_table(self) -> str:

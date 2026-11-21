@@ -1,0 +1,64 @@
+# Despliegue continuo: cada merge a dev/test/prod (push a la rama) despliega SU ambiente.
+#   rama -> workspace de Terraform -> terraform apply -> imágenes -> deploy.py -> canary.py
+# Corre en el runner self-hosted (tu equipo: Floci + minikube). Solo en `push` a ramas
+# protegidas, a las que no se llega sin PR aprobado por los checks (T3): un fork nunca llega aquí.
+name: deploy
+
+on:
+  push:
+    branches: [dev, test, prod]
+  workflow_dispatch: # demo de rollback desde la UI de Actions
+    inputs:
+      chaos:
+        description: fracción de 500 inducidos en el canary (0 = sano, 0.5 = roto)
+        default: "0"
+
+permissions:
+  contents: read
+
+concurrency: # nunca dos despliegues del mismo ambiente a la vez (ni dos applies del mismo estado)
+  group: deploy-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: deploy-${{ github.ref_name }}
+    runs-on: [self-hosted, aegisvolt]
+    environment: ${{ github.ref_name }} # historial de despliegues por ambiente en GitHub
+    env:
+      ENV_NAME: ${{ github.ref_name }}
+      AWS_ACCESS_KEY_ID: test # FALSAS: solo Floci
+      AWS_SECRET_ACCESS_KEY: test
+      AWS_DEFAULT_REGION: us-east-1
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      - name: Tag de la versión (sha corto)
+        id: ver
+        shell: bash
+        run: echo "tag=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+
+      - name: terraform apply (workspace ${{ env.ENV_NAME }})
+        shell: bash
+        working-directory: infra/envs
+        run: |
+          terraform init -input=false -backend-config=backend-floci.hcl
+          terraform workspace select "$ENV_NAME"
+          terraform plan -input=false -lock-timeout=120s -var-file=floci.tfvars -out=plan.out
+          terraform show -json plan.out > plan.json
+          uv run --no-project python ../../scripts/plan_guard.py plan.json --workspace "$ENV_NAME"
+          terraform apply -input=false -lock-timeout=120s plan.out
+
+      # deploy.py construye las 5 imágenes DENTRO de minikube (sin `image load`, ahorra RAM)
+      # con tag = sha, y arranca los Deployments de a uno.
+      - name: Build + despliegue en minikube
+        shell: bash
+        run: uv run python scripts/deploy.py --env "$ENV_NAME" --tag ${{ steps.ver.outputs.tag }}
+
+      - name: Canary del gateway (20 % -> promoción o rollback automático)
+        shell: bash
+        env:
+          CHAOS: ${{ github.event_name == 'workflow_dispatch' && inputs.chaos || '0' }}
+        run: >-
+          uv run python scripts/canary.py --env "$ENV_NAME"
+          --tag ${{ steps.ver.outputs.tag }} --weight 20 --chaos "$CHAOS"

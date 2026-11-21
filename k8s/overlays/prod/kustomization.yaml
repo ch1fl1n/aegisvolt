@@ -1,0 +1,31 @@
+# Overlay prod : namespace aegisvolt-prod, AEGIS_ENV=prod, host prod.aegisvolt.local
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: aegisvolt-prod
+
+resources:
+  - namespace.yaml
+  - ../../base
+
+configMapGenerator:
+  - name: aegis-config
+    behavior: merge
+    literals:
+      - AEGIS_ENV=prod
+
+patches:
+  - target:
+      kind: Ingress
+    patch: |-
+      - op: replace
+        path: /spec/rules/0/host
+        value: prod.aegisvolt.local
+  # prod: 2 réplicas estables del gateway (sin punto único de falla en la entrada).
+  - target:
+      kind: Deployment
+      name: graphql-gateway
+    patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 2

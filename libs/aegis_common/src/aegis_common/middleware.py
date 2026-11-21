@@ -18,8 +18,9 @@ _NOT_LOGGED = {"/healthz", "/readyz"}
 
 
 class RequestContextMiddleware:
-    def __init__(self, app: ASGIApp) -> None:
+    def __init__(self, app: ASGIApp, version: str | None = None) -> None:
         self.app = app
+        self.version = version  # se devuelve en x-service-version (se ve el reparto canary)
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] != "http":  # websockets y lifespan pasan sin tocar
@@ -41,7 +42,10 @@ class RequestContextMiddleware:
         async def send_with_header(message: Message) -> None:
             if message["type"] == "http.response.start":
                 status["code"] = message["status"]
-                MutableHeaders(scope=message).append("x-correlation-id", correlation_id)
+                response_headers = MutableHeaders(scope=message)
+                response_headers.append("x-correlation-id", correlation_id)
+                if self.version:
+                    response_headers.append("x-service-version", self.version)
             await send(message)
 
         try:

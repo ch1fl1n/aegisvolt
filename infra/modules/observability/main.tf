@@ -59,7 +59,7 @@ resource "aws_cloudwatch_log_metric_filter" "errors" {
 resource "aws_cloudwatch_log_metric_filter" "saga_compensated" {
   name           = "saga-compensated"
   log_group_name = aws_cloudwatch_log_group.service[var.orchestrator_service].name
-  pattern        = "{ $.event = \"saga_compensated\" }"
+  pattern        = "{ $.event = \"saga_finished\" && $.outcome = \"compensated\" }"
 
   metric_transformation {
     name      = "SagaCompensated"

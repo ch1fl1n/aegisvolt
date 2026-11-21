@@ -1,0 +1,24 @@
+# Topes por namespace: un ambiente no puede comerse la RAM de los otros (minikube ~2,2 GB).
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: aegis-quota
+spec:
+  hard:
+    pods: "10"
+    requests.cpu: "1"
+    requests.memory: 1Gi
+    limits.cpu: "3"
+    limits.memory: 2Gi
+---
+# Valores por defecto para cualquier contenedor que no declare recursos.
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: aegis-defaults
+spec:
+  limits:
+    - type: Container
+      default: { cpu: 200m, memory: 128Mi }
+      defaultRequest: { cpu: 25m, memory: 64Mi }
+      max: { cpu: "1", memory: 512Mi }

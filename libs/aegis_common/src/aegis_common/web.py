@@ -27,7 +27,7 @@ def create_app(
         redoc_url=None,
         openapi_url=None if is_prod else "/openapi.json",
     )
-    app.add_middleware(RequestContextMiddleware)
+    app.add_middleware(RequestContextMiddleware, version=settings.service_version)
     register_error_handlers(app)
     app.include_router(health_router(readiness_checks or {}))
     return app
