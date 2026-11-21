@@ -17,13 +17,32 @@ resource "aws_s3_bucket_versioning" "tfstate" {
   }
 }
 
+# Llave KMS PROPIA (customer managed) para el estado: control de acceso y auditoría de quién
+# descifra el tfstate, que puede contener datos sensibles. Rotación anual automática.
+resource "aws_kms_key" "tfstate" {
+  description             = "Cifrado del estado de Terraform de ${var.project}"
+  enable_key_rotation     = true
+  deletion_window_in_days = 7
+
+  lifecycle {
+    prevent_destroy = true # sin la llave, el estado cifrado no se puede leer
+  }
+}
+
+resource "aws_kms_alias" "tfstate" {
+  name          = "alias/${var.project}-tfstate"
+  target_key_id = aws_kms_key.tfstate.key_id
+}
+
 resource "aws_s3_bucket_server_side_encryption_configuration" "tfstate" {
   bucket = aws_s3_bucket.tfstate.id
 
   rule {
     apply_server_side_encryption_by_default {
-      sse_algorithm = "AES256"
+      sse_algorithm     = "aws:kms"
+      kms_master_key_id = aws_kms_key.tfstate.arn
     }
+    bucket_key_enabled = true # una llave por bucket: hasta 99 % menos llamadas (y costo) a KMS
   }
 }
 

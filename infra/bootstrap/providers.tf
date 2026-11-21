@@ -15,6 +15,7 @@ provider "aws" {
       dynamodb = endpoints.value
       sts      = endpoints.value
       iam      = endpoints.value
+      kms      = endpoints.value
     }
   }
 
