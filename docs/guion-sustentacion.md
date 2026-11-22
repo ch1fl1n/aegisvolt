@@ -60,6 +60,9 @@ hace en la preparación. En vivo solo se ejecuta lo que tarda segundos.
   control de acceso y auditoría de quién descifra; bucket key reduce llamadas a KMS.
 - **Si el canary no recibe suficiente tráfico?** Inconcluso => rollback igual (fail-safe, como
   Argo Rollouts "Inconclusive"); en CI no hay humano para decidir.
+- **¿Y el primer despliegue de un ambiente?** No hay versión anterior contra la cual medir: entra
+  directo como estable y el canary se omite con aviso (como Argo Rollouts con la primera
+  revisión). Se detecta con `--ignore-not-found`: una API caída falla el job, no salta el canary.
 - **¿Por qué la versión va dentro de la imagen?** Imágenes inmutables: el tag identifica el
   contenido; la métrica se filtra por versión. Y el ARG va al final para no romper la caché.
 - **¿Por qué los checks omitidos no cuentan?** Un job saltado reporta "skipped" y GitHub lo
