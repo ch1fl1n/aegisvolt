@@ -47,6 +47,16 @@ def test_transitorio_se_reintenta_y_queda_registrado(monkeypatch):
     assert len(deploy.RETRY_LOG) == 1
 
 
+def test_caida_de_buildkit_es_transitoria(monkeypatch):
+    execute, calls = fake([
+        (1, "", "ERROR: failed to solve: frontend grpc server closed unexpectedly"),
+        (0, "sha256:abc", ""),
+    ])  # fmt: skip
+    monkeypatch.setattr(deploy, "execute", execute)
+    assert deploy.run("docker", "build", ".") == "sha256:abc"
+    assert len(calls) == 2
+
+
 def test_transitorio_tiene_tope(monkeypatch):
     execute, calls = fake([(1, "", "dial tcp: connection refused")])
     monkeypatch.setattr(deploy, "execute", execute)

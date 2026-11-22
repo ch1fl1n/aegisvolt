@@ -20,7 +20,8 @@ TRANSIENT = re.compile(
     r"TLS handshake timeout|connection refused|connection reset|\bEOF\b|i/o timeout"
     r"|context deadline exceeded|Unable to connect to the server|failed calling webhook"
     r"|ServiceUnavailable|the server is currently unable|took an unusually long time"
-    r"|error during connect|Cannot connect to the Docker daemon",
+    r"|error during connect|Cannot connect to the Docker daemon"
+    r"|frontend grpc server closed unexpectedly",  # BuildKit se cae bajo carga; reintentar sí ayuda
     re.IGNORECASE,
 )
 RETRY_LOG: list[str] = []
