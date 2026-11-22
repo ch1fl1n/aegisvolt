@@ -5,13 +5,24 @@ Cada bloque dice **qué se demuestra**, **el comando** y **qué debe verse**.
 
 ## 0. Preparar el equipo (antes de entrar)
 
-El equipo tiene 6 GB: cerrar navegador extra, IDEs y Teams. Minikube y Floci necesitan ~3 GB.
+El equipo tiene 6 GB: cerrar navegador extra, IDEs, Teams, juegos y `wsl -t Ubuntu`.
+Minikube y Floci necesitan ~3 GB.
 
 ```powershell
+# 1. Docker Desktop abierto. Si Floci ya está en la red de minikube, se suelta (choque de IP).
 docker compose up -d                                  # Floci
-minikube start -p aegisvolt                           # clúster (perfil con addon ingress)
+docker network disconnect aegisvolt floci 2>$null
+minikube start -p aegisvolt                           # ~3 min
 docker update --cpus 4 aegisvolt                      # más CPU al nodo (no cuesta RAM)
+# 2. CLAVE: al arrancar, Kubernetes sube TODOS los pods a la vez, ninguno termina el
+#    startupProbe y entran en bucle de reinicios (exit 137) que satura el nodo. Se bajan
+#    a 0 y deploy.py los sube DE A UNO.
+foreach ($ns in "aegisvolt-dev", "aegisvolt-test", "aegisvolt-prod") {
+  kubectl -n $ns scale deploy --all --replicas=0 2>$null
+}
+curl.exe -s http://127.0.0.1:4566/_floci/health     # si no da 200: docker compose restart floci
 uv run python scripts/deploy.py --env dev --skip-build
+C:\Users\chifl\actions-runner\start-aegisvolt-runner.cmd   # runner (otra terminal)
 ```
 
 ### Modo liviano: levantar SOLO lo que pide cada prueba

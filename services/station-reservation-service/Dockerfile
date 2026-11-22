@@ -12,10 +12,7 @@ RUN /opt/venv/bin/pip install -r /tmp/requirements.txt /tmp/aegis_common
 
 # ---------- etapa 2: imagen final mínima, sin compiladores ni pip cache ----------
 FROM python:3.12-slim
-# La versión viaja DENTRO de la imagen: --build-arg SERVICE_VERSION=<tag>
-ARG SERVICE_VERSION=v1
-ENV SERVICE_VERSION=${SERVICE_VERSION} \
-    PATH=/opt/venv/bin:$PATH \
+ENV PATH=/opt/venv/bin:$PATH \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     SERVICE_NAME=station-reservation-service
@@ -25,6 +22,10 @@ RUN groupadd --system --gid 10001 app \
 COPY --from=build /opt/venv /opt/venv
 WORKDIR /srv
 COPY --chown=root:root services/station-reservation-service/app ./app
+# La versión viaja DENTRO de la imagen (--build-arg SERVICE_VERSION=<tag>). Va al FINAL:
+# cambia en cada deploy y todo lo de abajo de un ARG pierde la caché (doc de Docker).
+ARG SERVICE_VERSION=v1
+ENV SERVICE_VERSION=${SERVICE_VERSION}
 USER 10001:10001
 EXPOSE 8000
 HEALTHCHECK --interval=10s --timeout=3s --start-period=10s --retries=3 \
