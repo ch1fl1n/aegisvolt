@@ -1,0 +1,8 @@
+{
+  "filterPattern": "{ $.event = \"http_request\" && $.status >= 500 }",
+  "logEventMessages": [
+    "{\"event\":\"http_request\",\"status\":200,\"service\":\"billing-wallet-service\",\"version\":\"v1\",\"env\":\"dev\"}",
+    "{\"event\":\"http_request\",\"status\":503,\"service\":\"billing-wallet-service\",\"version\":\"v2\",\"env\":\"dev\"}",
+    "{\"event\":\"saga_compensated\",\"saga_id\":\"abc-123\",\"service\":\"graphql-gateway\",\"version\":\"v1\",\"env\":\"dev\"}"
+  ]
+}

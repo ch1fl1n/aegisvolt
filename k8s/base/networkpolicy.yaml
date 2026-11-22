@@ -1,0 +1,53 @@
+# Mínimo privilegio en red (solo entrada):
+#   1. Nadie entra a ningún pod del namespace...
+#   2. ...salvo el Ingress controller al gateway, y
+#   3. el gateway a los tres servicios de dominio.
+# OJO: el CNI por defecto de minikube NO hace cumplir NetworkPolicy (las acepta y las ignora).
+# Para que se apliquen hay que arrancar minikube con --cni=calico. Queda documentado.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+spec:
+  podSelector: {}
+  policyTypes: ["Ingress"]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: gateway-from-ingress # gateway y frontend: solo el Ingress controller entra
+spec:
+  podSelector:
+    matchExpressions:
+      - { key: app, operator: In, values: [graphql-gateway, frontend] }
+  policyTypes: ["Ingress"]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: ingress-nginx
+      ports:
+        - { protocol: TCP, port: 8000 }
+        - { protocol: TCP, port: 8080 }
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: backends-from-gateway
+spec:
+  podSelector:
+    matchExpressions:
+      - key: app
+        operator: In
+        values:
+          - station-reservation-service
+          - billing-wallet-service
+          - energy-dispatch-service
+  policyTypes: ["Ingress"]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: graphql-gateway
+      ports:
+        - { protocol: TCP, port: 8000 }

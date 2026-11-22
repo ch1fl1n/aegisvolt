@@ -1,0 +1,91 @@
+# Despliegue continuo: cada merge a dev/test/prod (push a la rama) despliega SU ambiente.
+#   rama -> workspace de Terraform -> terraform apply -> imágenes -> deploy.py -> canary.py
+# Corre en el runner self-hosted (tu equipo: Floci + minikube). Solo en `push` a ramas
+# protegidas, a las que no se llega sin PR aprobado por los checks (T3): un fork nunca llega aquí.
+name: deploy
+
+on:
+  push:
+    branches: [dev, test, prod]
+  workflow_dispatch: # demo de rollback desde la UI de Actions
+    inputs:
+      chaos:
+        description: fracción de 500 inducidos en el canary (0 = sano, 0.5 = roto)
+        default: "0"
+
+permissions:
+  contents: read
+
+concurrency: # nunca dos despliegues del mismo ambiente a la vez (ni dos applies del mismo estado)
+  group: deploy-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: deploy-${{ github.ref_name }}
+    runs-on: [self-hosted, aegisvolt]
+    environment: ${{ github.ref_name }} # historial de despliegues por ambiente en GitHub
+    env:
+      ENV_NAME: ${{ github.ref_name }}
+      AWS_ACCESS_KEY_ID: test # FALSAS: solo Floci
+      AWS_SECRET_ACCESS_KEY: test
+      AWS_DEFAULT_REGION: us-east-1
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      - name: Tag de la versión (sha corto)
+        id: ver
+        shell: bash
+        run: echo "tag=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+
+      - name: terraform apply (workspace ${{ env.ENV_NAME }})
+        shell: bash
+        working-directory: infra/envs
+        run: |
+          terraform init -input=false -backend-config=backend-floci.hcl
+          terraform workspace select "$ENV_NAME"
+          terraform plan -input=false -lock-timeout=120s -var-file=floci.tfvars -out=plan.out
+          terraform show -json plan.out > plan.json
+          uv run --no-project python ../../scripts/plan_guard.py plan.json --workspace "$ENV_NAME"
+          terraform apply -input=false -lock-timeout=120s plan.out
+
+      # Primer despliegue del ambiente = no hay versión anterior contra la cual medir un canary:
+      # la versión entra directo como estable (como Argo Rollouts con la primera revisión).
+      # --ignore-not-found: "no existe" sale con código 0 y vacío; un error de API falla el job
+      # (nunca se confunde una API caída con "primer despliegue" y se salta el canary por error).
+      - name: ¿Hay un gateway estable previo?
+        id: prev
+        shell: bash
+        run: |
+          found=$(kubectl --context aegisvolt -n "aegisvolt-$ENV_NAME" \
+            get deployment/graphql-gateway --ignore-not-found -o name)
+          if [[ -n "$found" ]]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Primer despliegue de $ENV_NAME: sin versión previa, sin canary"
+          fi
+
+      # deploy.py construye las 5 imágenes DENTRO de minikube (sin `image load`, ahorra RAM)
+      # con tag = sha, y arranca los Deployments de a uno.
+      - name: Build + despliegue en minikube
+        shell: bash
+        env:
+          # Secreto del ENVIRONMENT (uno distinto por dev/test/prod); el runner no tiene .env.
+          ADMIN_TOKEN: ${{ secrets.ADMIN_TOKEN }}
+        # dev: los 5 servicios (demo de SAGA). test/prod: solo el gateway (flags y canary), porque
+        # 3 ambientes completos no caben en un nodo de 2 GB (modo liviano aprobado por el profe).
+        run: |
+          only=()
+          [[ "$ENV_NAME" == "dev" ]] || only=(--only graphql-gateway)
+          uv run python scripts/deploy.py --env "$ENV_NAME" \
+            --tag ${{ steps.ver.outputs.tag }} "${only[@]}"
+
+      - name: Canary del gateway (20 % -> promoción o rollback automático)
+        if: steps.prev.outputs.exists == 'true'
+        shell: bash
+        env:
+          CHAOS: ${{ github.event_name == 'workflow_dispatch' && inputs.chaos || '0' }}
+        run: >-
+          uv run python scripts/canary.py --env "$ENV_NAME"
+          --tag ${{ steps.ver.outputs.tag }} --weight 20 --chaos "$CHAOS"

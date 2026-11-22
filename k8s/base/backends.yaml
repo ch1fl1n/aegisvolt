@@ -1,0 +1,228 @@
+# Los tres microservicios de dominio. Mismo molde en los tres:
+#   - Pod Security "restricted": no root, sin escalar privilegios, sin capabilities, seccomp.
+#   - Sistema de archivos de solo lectura + emptyDir en /tmp.
+#   - readiness (/readyz: revisa SU tabla) y liveness (/healthz: el proceso responde).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: station-reservation-service
+spec:
+  replicas: 1
+  strategy: # con poca RAM se reemplaza el pod en vez de duplicarlo durante el rollout
+    rollingUpdate: { maxSurge: 0, maxUnavailable: 1 }
+  selector:
+    matchLabels:
+      app: station-reservation-service
+  template:
+    metadata:
+      labels:
+        app: station-reservation-service
+    spec:
+      automountServiceAccountToken: false # no habla con la API de Kubernetes
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: app
+          image: aegisvolt/station-reservation-service:v1
+          imagePullPolicy: IfNotPresent # la imagen se carga con `minikube image load`
+          ports:
+            - name: http
+              containerPort: 8000
+          envFrom:
+            - configMapRef:
+                name: aegis-config
+            - secretRef:
+                name: aws-credentials
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests: { cpu: 25m, memory: 96Mi }
+            limits: { cpu: 300m, memory: 160Mi }
+          readinessProbe:
+            httpGet: { path: /readyz, port: http }
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 6 # 30 s de tolerancia: con el nodo cargado DynamoDB responde lento
+          # Arranque lento con CPU limitada: hasta 180 s antes de que liveness pueda matarlo.
+          startupProbe:
+            httpGet: { path: /healthz, port: http }
+            periodSeconds: 3
+            failureThreshold: 60
+          # Liveness más tolerante que readiness (doc de Kubernetes): con el host paginando, un
+          # timeout de 1 s mataba contenedores sanos y disparaba una tormenta de reinicios.
+          livenessProbe:
+            httpGet: { path: /healthz, port: http }
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6 # 60 s sin responder antes de reiniciar
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
+      volumes:
+        - { name: tmp, emptyDir: { sizeLimit: 16Mi } }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: station-reservation-service
+spec:
+  selector:
+    app: station-reservation-service
+  ports:
+    - { name: http, port: 8000, targetPort: http }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: billing-wallet-service
+spec:
+  replicas: 1
+  strategy: # con poca RAM se reemplaza el pod en vez de duplicarlo durante el rollout
+    rollingUpdate: { maxSurge: 0, maxUnavailable: 1 }
+  selector:
+    matchLabels:
+      app: billing-wallet-service
+  template:
+    metadata:
+      labels:
+        app: billing-wallet-service
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: app
+          image: aegisvolt/billing-wallet-service:v1
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8000
+          envFrom:
+            - configMapRef:
+                name: aegis-config
+            - secretRef:
+                name: aws-credentials
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests: { cpu: 25m, memory: 96Mi }
+            limits: { cpu: 300m, memory: 160Mi }
+          readinessProbe:
+            httpGet: { path: /readyz, port: http }
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 6 # 30 s de tolerancia: con el nodo cargado DynamoDB responde lento
+          # Arranque lento con CPU limitada: hasta 180 s antes de que liveness pueda matarlo.
+          startupProbe:
+            httpGet: { path: /healthz, port: http }
+            periodSeconds: 3
+            failureThreshold: 60
+          # Liveness más tolerante que readiness (doc de Kubernetes): con el host paginando, un
+          # timeout de 1 s mataba contenedores sanos y disparaba una tormenta de reinicios.
+          livenessProbe:
+            httpGet: { path: /healthz, port: http }
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6 # 60 s sin responder antes de reiniciar
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
+      volumes:
+        - { name: tmp, emptyDir: { sizeLimit: 16Mi } }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: billing-wallet-service
+spec:
+  selector:
+    app: billing-wallet-service
+  ports:
+    - { name: http, port: 8000, targetPort: http }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: energy-dispatch-service
+spec:
+  replicas: 1
+  strategy: # con poca RAM se reemplaza el pod en vez de duplicarlo durante el rollout
+    rollingUpdate: { maxSurge: 0, maxUnavailable: 1 }
+  selector:
+    matchLabels:
+      app: energy-dispatch-service
+  template:
+    metadata:
+      labels:
+        app: energy-dispatch-service
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: app
+          image: aegisvolt/energy-dispatch-service:v1
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8000
+          envFrom:
+            - configMapRef:
+                name: aegis-config
+            - secretRef:
+                name: aws-credentials
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests: { cpu: 25m, memory: 96Mi }
+            limits: { cpu: 300m, memory: 160Mi }
+          readinessProbe:
+            httpGet: { path: /readyz, port: http }
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 6 # 30 s de tolerancia: con el nodo cargado DynamoDB responde lento
+          # Arranque lento con CPU limitada: hasta 180 s antes de que liveness pueda matarlo.
+          startupProbe:
+            httpGet: { path: /healthz, port: http }
+            periodSeconds: 3
+            failureThreshold: 60
+          # Liveness más tolerante que readiness (doc de Kubernetes): con el host paginando, un
+          # timeout de 1 s mataba contenedores sanos y disparaba una tormenta de reinicios.
+          livenessProbe:
+            httpGet: { path: /healthz, port: http }
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6 # 60 s sin responder antes de reiniciar
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
+      volumes:
+        - { name: tmp, emptyDir: { sizeLimit: 16Mi } }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: energy-dispatch-service
+spec:
+  selector:
+    app: energy-dispatch-service
+  ports:
+    - { name: http, port: 8000, targetPort: http }
