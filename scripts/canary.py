@@ -168,12 +168,26 @@ def evaluate(env: str, version: str, since: datetime) -> tuple[int, int, str]:
     return total, errors, "FilterLogEvents (plan B: Floci no da datapoints)"
 
 
-def promote(kube: Kube, tag: str) -> None:
-    kube.set_weight(100)  # todo el tráfico al canary mientras se actualiza el estable
-    kube("set", "image", "deployment/graphql-gateway", f"app=aegisvolt/graphql-gateway:{tag}")
-    kube("rollout", "status", "deployment/graphql-gateway", "--timeout=180s")
+def promote(kube: Kube, tag: str) -> bool:
+    """Pasa `tag` al estable. Si el rollout no termina, vuelve a lo conocido (fail-safe).
+
+    Bug de la prueba: un rollout lento (nodo saturado) abortaba aquí y dejaba canary-weight=100
+    con el estable a medio actualizar. Ahora, como el abort de Argo Rollouts: tráfico al estable
+    y `rollout undo` a la versión anterior.
+    """
+    kube.set_weight(100)  # todo el tráfico al canary (ya validado) mientras cambia el estable
+    try:
+        kube("set", "image", "deployment/graphql-gateway", f"app=aegisvolt/graphql-gateway:{tag}")
+        # 300 s: mismo margen que deploy.py (startupProbe de hasta 180 s + programación del pod)
+        kube("rollout", "status", "deployment/graphql-gateway", "--timeout=300s")
+    except SystemExit as exc:
+        print(f"PROMOCIÓN FALLIDA ({exc}): se revierte el estable a la versión anterior")
+        kube("rollout", "undo", "deployment/graphql-gateway", check=False)
+        rollback(kube)
+        return False
     kube.set_weight(0)
     kube("scale", "deployment/graphql-gateway-canary", "--replicas=0")
+    return True
 
 
 def rollback(kube: Kube) -> None:
@@ -255,9 +269,9 @@ def main() -> int:
         rollback(kube)
         return 1
     print(f"PROMOCIÓN: {rate:.1%} <= {args.max_error_rate:.0%}; {args.tag} pasa a estable")
-    promote(kube, args.tag)
+    promoted = promote(kube, args.tag)
     print(summary())
-    return 0
+    return 0 if promoted else 1
 
 
 if __name__ == "__main__":
