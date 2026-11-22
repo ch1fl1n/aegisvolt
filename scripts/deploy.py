@@ -206,9 +206,12 @@ def main() -> None:
         "AWS_ACCESS_KEY_ID": env.get("AWS_ACCESS_KEY_ID", "test"),  # FALSAS: solo Floci
         "AWS_SECRET_ACCESS_KEY": env.get("AWS_SECRET_ACCESS_KEY", "test"),
     }
-    token = env.get("ADMIN_TOKEN")
+    # CI: secreto del environment de GitHub (variable de entorno). Local: .env.
+    # Uno por ambiente (ADMIN_TOKEN_PROD...) y ADMIN_TOKEN como respaldo.
+    per_env = f"ADMIN_TOKEN_{args.env.upper()}"
+    token = os.environ.get("ADMIN_TOKEN") or env.get(per_env) or env.get("ADMIN_TOKEN")
     if not token:
-        sys.exit("Falta ADMIN_TOKEN en .env")
+        sys.exit("Falta ADMIN_TOKEN (secreto del environment en CI o .env en local)")
     for name, data in (("aws-credentials", aws), ("gateway-admin", {"ADMIN_TOKEN": token})):
         run(*kubectl, "apply", "-f", "-", stdin=secret_yaml(kubectl, ns, name, data))
     run(*kubectl, "apply", "-f", "-", stdin=endpoint_slice(ns, floci_ip))
