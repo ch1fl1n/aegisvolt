@@ -49,6 +49,23 @@ jobs:
           uv run --no-project python ../../scripts/plan_guard.py plan.json --workspace "$ENV_NAME"
           terraform apply -input=false -lock-timeout=120s plan.out
 
+      # Primer despliegue del ambiente = no hay versión anterior contra la cual medir un canary:
+      # la versión entra directo como estable (como Argo Rollouts con la primera revisión).
+      # --ignore-not-found: "no existe" sale con código 0 y vacío; un error de API falla el job
+      # (nunca se confunde una API caída con "primer despliegue" y se salta el canary por error).
+      - name: ¿Hay un gateway estable previo?
+        id: prev
+        shell: bash
+        run: |
+          found=$(kubectl --context aegisvolt -n "aegisvolt-$ENV_NAME" \
+            get deployment/graphql-gateway --ignore-not-found -o name)
+          if [[ -n "$found" ]]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Primer despliegue de $ENV_NAME: sin versión previa, sin canary"
+          fi
+
       # deploy.py construye las 5 imágenes DENTRO de minikube (sin `image load`, ahorra RAM)
       # con tag = sha, y arranca los Deployments de a uno.
       - name: Build + despliegue en minikube
@@ -65,6 +82,7 @@ jobs:
             --tag ${{ steps.ver.outputs.tag }} "${only[@]}"
 
       - name: Canary del gateway (20 % -> promoción o rollback automático)
+        if: steps.prev.outputs.exists == 'true'
         shell: bash
         env:
           CHAOS: ${{ github.event_name == 'workflow_dispatch' && inputs.chaos || '0' }}
