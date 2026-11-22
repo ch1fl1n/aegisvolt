@@ -111,5 +111,6 @@ recargar, y la siguiente carga termina en `COMPENSATED`. En `prod` la flag sigue
 | Todo responde `v1` | tag reutilizado o env `SERVICE_VERSION` viejo | usar un tag nuevo; `kubectl set env deploy/<x> SERVICE_VERSION-` |
 | `TLS handshake timeout` | nodo sin RAM | escalar a 0 lo que no se muestra |
 | `get --raw /readyz` da NotFound en Git Bash | MSYS convierte la ruta | usar PowerShell o `MSYS_NO_PATHCONV=1` (canary.py ya lo verifica solo) |
+| `minikube start` falla: `Address already in use` | Floci tomó la IP de minikube al reiniciar Docker | `docker network disconnect aegisvolt floci`; `minikube start -p aegisvolt` (deploy.py lo reconecta) |
 | Prefect: `Can't locate revision` | `~/.prefect` migrada por otra versión | `$env:PREFECT_HOME` a una carpeta nueva |
 | Canary "sin evidencia" | tráfico no llegó al canary | revisar `canary-weight` y que los dos Ingress tengan el mismo host/path |

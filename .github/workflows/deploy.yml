@@ -53,6 +53,9 @@ jobs:
       # con tag = sha, y arranca los Deployments de a uno.
       - name: Build + despliegue en minikube
         shell: bash
+        env:
+          # Secreto del ENVIRONMENT (uno distinto por dev/test/prod); el runner no tiene .env.
+          ADMIN_TOKEN: ${{ secrets.ADMIN_TOKEN }}
         run: uv run python scripts/deploy.py --env "$ENV_NAME" --tag ${{ steps.ver.outputs.tag }}
 
       - name: Canary del gateway (20 % -> promoción o rollback automático)
