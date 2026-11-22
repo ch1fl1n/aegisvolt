@@ -1,0 +1,7 @@
+# Dueño de todo el repo (proyecto individual). Las rutas críticas se listan aparte para
+# que quede explícito quién responde por la infraestructura y el pipeline.
+*                 @ch1fl1n
+/infra/           @ch1fl1n
+/k8s/             @ch1fl1n
+/.github/         @ch1fl1n
+/scripts/canary.py @ch1fl1n

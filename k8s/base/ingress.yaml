@@ -1,0 +1,60 @@
+# Dos Ingress con el MISMO host y path: ingress-nginx los combina.
+#   - estable: todo el tráfico va a graphql-gateway.
+#   - canary: canary-weight % va a graphql-gateway-canary (canary.py lo sube 0 -> 20 -> 100).
+#     Con el header "x-canary: always" se fuerza la versión nueva (pruebas, R6).
+# Timeouts largos: las suscripciones GraphQL son WebSockets (WSS) que quedan abiertos, y un
+# WebSocket se queda pegado a la versión en la que se abrió aunque cambie el peso.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: graphql-gateway
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: aegisvolt.local # cada overlay lo cambia por <env>.aegisvolt.local
+      http:
+        paths:
+          - path: /graphql # API (HTTP y WSS) -> gateway
+            pathType: Prefix
+            backend:
+              service:
+                name: graphql-gateway
+                port: { name: http }
+          - path: /readyz # lo usa canary.py para saber que el Ingress ya responde
+            pathType: Exact
+            backend:
+              service:
+                name: graphql-gateway
+                port: { name: http }
+          - path: / # todo lo demás -> frontend (mismo origen: sin CORS)
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend
+                port: { name: http }
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: graphql-gateway-canary
+  annotations:
+    nginx.ingress.kubernetes.io/canary: "true"
+    nginx.ingress.kubernetes.io/canary-weight: "0"
+    nginx.ingress.kubernetes.io/canary-by-header: x-canary
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: aegisvolt.local
+      http:
+        paths: # el canary SOLO aplica a la API: mismo path que el Ingress estable
+          - path: /graphql
+            pathType: Prefix
+            backend:
+              service:
+                name: graphql-gateway-canary
+                port: { name: http }

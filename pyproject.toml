@@ -13,10 +13,17 @@ dev = [
     "pytest-asyncio==1.2.*",
     "ruff==0.14.*",
     "pre-commit==4.3.*",
+    "aegis-common",
+    "uvicorn[standard]==0.38.*",
+    "strawberry-graphql[fastapi]>=0.250,<1",
+    "websockets>=13",
 ]
 
 [tool.uv]
 package = false
+# Prefect NO va en este entorno: su server 3.4 choca con el FastAPI de los servicios
+# (Body(min_items) eliminado). Vive aislado en observability/prefect/.venv (requirements.txt).
+default-groups = ["dev"]
 
 [tool.ruff]
 line-length = 100
@@ -26,7 +33,7 @@ target-version = "py312"
 select = ["E", "F", "I", "B", "S", "UP"]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["S101"]
+"**/tests/**" = ["S101"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -35,3 +42,12 @@ markers = [
     "integration: requiere Floci levantado",
     "e2e: requiere el stack completo",
 ]
+
+[tool.uv.workspace]
+members = ["libs/aegis_common"]
+
+[tool.uv.sources]
+aegis-common = { workspace = true }
+
+[tool.ruff.lint.isort]
+known-first-party = ["aegis_common", "app"]

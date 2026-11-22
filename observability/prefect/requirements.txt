@@ -1,0 +1,10 @@
+# Entorno AISLADO de Prefect (no se mezcla con el de los servicios: choque de FastAPI).
+#   uv venv observability/prefect/.venv --python 3.12
+#   uv pip install --python observability/prefect/.venv -r observability/prefect/requirements.txt
+prefect==3.4.25
+# Prefect 3.4.25 lo importa en workers/base.py pero no lo declara como dependencia.
+importlib-metadata==8.*
+# El server 3.4 usa Body(min_items=...), que FastAPI ya no acepta en versiones nuevas.
+fastapi<0.120
+boto3==1.40.*
+httpx==0.28.*
