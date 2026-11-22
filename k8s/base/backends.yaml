@@ -55,9 +55,13 @@ spec:
             httpGet: { path: /healthz, port: http }
             periodSeconds: 3
             failureThreshold: 60
+          # Liveness más tolerante que readiness (doc de Kubernetes): con el host paginando, un
+          # timeout de 1 s mataba contenedores sanos y disparaba una tormenta de reinicios.
           livenessProbe:
             httpGet: { path: /healthz, port: http }
             periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6 # 60 s sin responder antes de reiniciar
           volumeMounts:
             - { name: tmp, mountPath: /tmp }
       volumes:
@@ -126,9 +130,13 @@ spec:
             httpGet: { path: /healthz, port: http }
             periodSeconds: 3
             failureThreshold: 60
+          # Liveness más tolerante que readiness (doc de Kubernetes): con el host paginando, un
+          # timeout de 1 s mataba contenedores sanos y disparaba una tormenta de reinicios.
           livenessProbe:
             httpGet: { path: /healthz, port: http }
             periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6 # 60 s sin responder antes de reiniciar
           volumeMounts:
             - { name: tmp, mountPath: /tmp }
       volumes:
@@ -197,9 +205,13 @@ spec:
             httpGet: { path: /healthz, port: http }
             periodSeconds: 3
             failureThreshold: 60
+          # Liveness más tolerante que readiness (doc de Kubernetes): con el host paginando, un
+          # timeout de 1 s mataba contenedores sanos y disparaba una tormenta de reinicios.
           livenessProbe:
             httpGet: { path: /healthz, port: http }
             periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6 # 60 s sin responder antes de reiniciar
           volumeMounts:
             - { name: tmp, mountPath: /tmp }
       volumes:
