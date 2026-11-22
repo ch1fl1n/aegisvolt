@@ -9,7 +9,7 @@ hace en la preparación. En vivo solo se ejecuta lo que tarda segundos.
 | T | Paso | Comando / acción | Listo cuando |
 | --- | --- | --- | --- |
 | -80 | Cerrar todo lo pesado | navegador extra, juegos, IDEs; `wsl -t Ubuntu` | |
-| -78 | Docker + Floci | abrir Docker Desktop; `docker compose up -d`; `docker network disconnect aegisvolt floci` | `curl.exe -s http://127.0.0.1:4566/_floci/health` = 200 |
+| -78 | Docker + Floci | abrir Docker Desktop (~2 min); `docker compose up -d`; `docker network disconnect aegisvolt floci`; `docker compose restart floci` (al soltar la red se rompe su puerto; 8 s) | `curl.exe -s http://127.0.0.1:4566/_floci/health` = 200 |
 | -75 | Clúster | `minikube start -p aegisvolt`; `docker update --cpus 4 aegisvolt` | ~3 min |
 | -71 | Evitar bucle de reinicios | escalar dev/test/prod a 0 (runbook §0) | `kubectl get pods -A` sin pods de la app |
 | -70 | dev completo | `uv run python scripts/deploy.py --env dev --skip-build` | 5/5 Running, 0 reinicios |

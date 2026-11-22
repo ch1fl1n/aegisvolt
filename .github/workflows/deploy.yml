@@ -56,7 +56,13 @@ jobs:
         env:
           # Secreto del ENVIRONMENT (uno distinto por dev/test/prod); el runner no tiene .env.
           ADMIN_TOKEN: ${{ secrets.ADMIN_TOKEN }}
-        run: uv run python scripts/deploy.py --env "$ENV_NAME" --tag ${{ steps.ver.outputs.tag }}
+        # dev: los 5 servicios (demo de SAGA). test/prod: solo el gateway (flags y canary), porque
+        # 3 ambientes completos no caben en un nodo de 2 GB (modo liviano aprobado por el profe).
+        run: |
+          only=()
+          [[ "$ENV_NAME" == "dev" ]] || only=(--only graphql-gateway)
+          uv run python scripts/deploy.py --env "$ENV_NAME" \
+            --tag ${{ steps.ver.outputs.tag }} "${only[@]}"
 
       - name: Canary del gateway (20 % -> promoción o rollback automático)
         shell: bash
