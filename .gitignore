@@ -34,3 +34,5 @@ dist/
 .kiro/
 .DS_Store
 k8s/.render-*/
+# Prefect: base local propia (PREFECT_HOME) para no chocar con otra instalación
+observability/prefect/.home/

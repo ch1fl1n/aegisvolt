@@ -36,6 +36,9 @@ spec:
             - { name: RESERVATIONS_URL, value: http://station-reservation-service:8000 }
             - { name: BILLING_URL, value: http://billing-wallet-service:8000 }
             - { name: DISPATCH_URL, value: http://energy-dispatch-service:8000 }
+            # 3 s por defecto: con el host paginando, Floci tardó 6-20 s y la saga daba ReadTimeout
+            # (la saga compensaba bien, pero el camino feliz debe completar). Ensayo 22-nov.
+            - { name: HTTP_TIMEOUT_S, value: "20" }
           envFrom:
             - configMapRef:
                 name: aegis-config
@@ -119,6 +122,9 @@ spec:
             - { name: RESERVATIONS_URL, value: http://station-reservation-service:8000 }
             - { name: BILLING_URL, value: http://billing-wallet-service:8000 }
             - { name: DISPATCH_URL, value: http://energy-dispatch-service:8000 }
+            # 3 s por defecto: con el host paginando, Floci tardó 6-20 s y la saga daba ReadTimeout
+            # (la saga compensaba bien, pero el camino feliz debe completar). Ensayo 22-nov.
+            - { name: HTTP_TIMEOUT_S, value: "20" }
           envFrom:
             - configMapRef:
                 name: aegis-config
