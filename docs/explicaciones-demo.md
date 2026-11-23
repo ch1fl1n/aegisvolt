@@ -167,6 +167,18 @@ Código para mostrar: §11.8.
 - **¿Por qué orquestación y no coreografía?** Un solo lugar con el estado de la saga
   (bitácora), compensaciones explícitas y trazables; con 3 servicios la coreografía dispersa
   la lógica y dificulta auditar.
+- **¿Serviría en una empresa real?** Sí: es el problema de cualquier operador de carga (o de
+  reservas de hotel + vuelo, o apps de transporte): una operación de negocio toca varios
+  servicios con su propia base, no hay transacción ACID entre ellos y no se puede dejar al
+  cliente cobrado sin carga ni un conector bloqueado. Lo que ya es "de producción": estado
+  persistido en cada paso, compensaciones idempotentes, saga_id como llave de idempotencia,
+  correlation_id para soporte ("¿se le cobró a este cliente?" -> `trace_saga.py`) y auditoría
+  periódica de huérfanas. Lo que agregaría en real: preautorización (retener el saldo y capturar
+  al terminar la carga, como hacen las pasarelas de pago), reanudación automática de huérfanas
+  y alertas del run de auditoría hacia el equipo de guardia.
+- **¿Por qué en la traza sale "Detener carga" antes del reembolso?** Se compensa también el paso
+  que falló (pudo arrancar el cargador antes de reportar el error); detener es idempotente.
+  Orden inverso: detener -> reembolsar -> liberar.
 - **¿Qué pasa si el gateway muere a mitad de una saga?** Queda en STARTED en la bitácora; la
   auditoría de Prefect la marca como huérfana. Siguiente paso natural: reanudar o compensar
   automáticamente las que pasen un umbral.

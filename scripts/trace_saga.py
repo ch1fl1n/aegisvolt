@@ -1,7 +1,7 @@
 """Sigue una saga por su correlation_id en los logs de CloudWatch de los 4 servicios (§6.4).
 
     uv run python scripts/trace_saga.py                 # la última saga COMPENSADA de dev
-    uv run python scripts/trace_saga.py --saga <id>     # una saga concreta
+    uv run python scripts/trace_saga.py --saga ba01f9b2 # una saga (basta el inicio del id)
     uv run python scripts/trace_saga.py --env test
 
 1. Busca en el log del gateway el evento `saga_finished` (filtro JSON de CloudWatch).
@@ -41,7 +41,7 @@ def events(logs, group: str, pattern: str) -> list[dict]:
 def main() -> int:
     p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     p.add_argument("--env", default="dev", choices=("dev", "test", "prod"))
-    p.add_argument("--saga", help="saga_id (por defecto: la última compensada)")
+    p.add_argument("--saga", help="saga_id o su inicio (por defecto: la última compensada)")
     args = p.parse_args()
     logs = boto3.client(
         "logs",
@@ -51,11 +51,12 @@ def main() -> int:
         aws_secret_access_key=os.environ.get("AWS_SECRET_ACCESS_KEY", "test"),
     )
     gw = f"/aegisvolt/{args.env}/graphql-gateway"
-    if args.saga:
-        pattern = f'{{ $.event = "saga_finished" && $.saga_id = "{args.saga}" }}'
+    if args.saga:  # el filtro de CloudWatch compara exacto: el prefijo se filtra aquí
+        found = events(logs, gw, '{ $.event = "saga_finished" }')
+        found = [e for e in found if json.loads(e["message"])["saga_id"].startswith(args.saga)]
     else:
         pattern = '{ $.event = "saga_finished" && $.outcome = "compensated" }'
-    found = events(logs, gw, pattern)
+        found = events(logs, gw, pattern)
     if not found:
         print("No hay sagas que cumplan el filtro en", gw)
         return 1
