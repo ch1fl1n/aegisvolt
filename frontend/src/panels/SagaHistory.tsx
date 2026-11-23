@@ -4,6 +4,7 @@ import { gql } from "../api/graphql";
 import { Q_SAGAS, type Saga } from "../api/operations";
 import { usePolling } from "../hooks/usePolling";
 import { SagaTimeline } from "./SagaTimeline";
+import { Skeleton } from "./Skeleton";
 
 const STATUSES = ["COMPLETED", "COMPENSATED", "FAILED", "STARTED"];
 
@@ -29,6 +30,7 @@ export function SagaHistory() {
         ))}
       </div>
       {error && <p className="error">{error}</p>}
+      {!data && !error && <Skeleton rows={3} height={90} />}
       {data?.length === 0 && <p className="note">Sin sagas en {status}.</p>}
       <div className="history">
         {(data ?? []).map((s) => (

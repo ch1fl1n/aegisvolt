@@ -45,7 +45,7 @@ export const S_STATION = `subscription($s: String!) { stationUpdates(stationId: 
 
 export const Q_FLAGS = `{ flags { name enabled } }`;
 export const S_FLAGS = `subscription { featureFlagsChanged { name enabled } }`;
-export const M_SET_FLAG = `mutation($n: Flag!, $e: Boolean!) { setFlag(name: $n, enabled: $e) { name enabled } }`;
+export const M_SET_FLAG = `mutation($n: FlagName!, $e: Boolean!) { setFlag(name: $n, enabled: $e) { name enabled } }`;
 
 export const Q_WALLET = `query($a: String!) { wallet(accountId: $a) { accountId balanceCents } }`;
 

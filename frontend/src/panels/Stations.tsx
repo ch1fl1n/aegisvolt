@@ -2,6 +2,7 @@ import { gql } from "../api/graphql";
 import { type Connector, Q_CONNECTORS, S_STATION } from "../api/operations";
 import { useLive } from "../hooks/useLive";
 import { LiveBadge } from "./LiveBadge";
+import { Skeleton } from "./Skeleton";
 
 export const STATIONS = ["st-norte", "st-centro", "st-sur"];
 
@@ -35,6 +36,7 @@ export function Stations({
         ))}
       </div>
       {error && <p className="error">{error}</p>}
+      {!data && !error && <Skeleton rows={2} height={42} />}
       <ul className="connectors">
         {(data ?? []).map((c) => (
           <li key={c.connectorId} className={`connector ${c.status.toLowerCase()}`}>
