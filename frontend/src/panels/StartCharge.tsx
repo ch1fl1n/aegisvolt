@@ -6,8 +6,23 @@ import { useLive } from "../hooks/useLive";
 import { usePolling } from "../hooks/usePolling";
 import { LiveBadge } from "./LiveBadge";
 import { SagaTimeline } from "./SagaTimeline";
+import { Skeleton } from "./Skeleton";
 
 const ACCOUNTS = ["acc-demo", "acc-pobre"];
+
+/**
+ * UUID v4 para el saga_id. crypto.randomUUID() solo existe en contextos seguros (HTTPS o
+ * localhost; MDN) y la demo entra por http://dev.aegisvolt.local: sin este respaldo el clic
+ * fallaba en silencio. getRandomValues() sí está disponible en HTTP.
+ */
+function newSagaId(): string {
+  if (typeof crypto.randomUUID === "function") return crypto.randomUUID();
+  const b = crypto.getRandomValues(new Uint8Array(16));
+  b[6] = (b[6] & 0x0f) | 0x40; // versión 4
+  b[8] = (b[8] & 0x3f) | 0x80; // variante RFC 4122
+  const h = Array.from(b, (x) => x.toString(16).padStart(2, "0")).join("");
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
+}
 
 /**
  * Panel 2: iniciar una carga = lanzar la SAGA (reservar → cobrar → arrancar).
@@ -38,11 +53,11 @@ export function StartCharge({ station }: { station: string }) {
   });
 
   async function start() {
-    const id = crypto.randomUUID();
-    setSagaId(id);
     setError(null);
     setBusy(true);
     try {
+      const id = newSagaId(); // dentro del try: cualquier fallo se muestra, nunca es silencioso
+      setSagaId(id);
       await gql(M_START, {
         i: {
           sagaId: id,
@@ -85,14 +100,23 @@ export function StartCharge({ station }: { station: string }) {
           kWh <input type="number" min={1} max={200} value={kwh} onChange={(e) => setKwh(+e.target.value)} />
         </label>
         <p className="note">
-          Saldo: {wallet.data ? (wallet.data.balanceCents / 100).toFixed(2) : "…"}
+          Saldo:{" "}
+          {wallet.data ? (
+            (wallet.data.balanceCents / 100).toFixed(2)
+          ) : (
+            <span className="skeleton inline" aria-label="Cargando saldo" />
+          )}
         </p>
-        <button onClick={start} disabled={busy}>
+        <button onClick={start} disabled={busy} aria-busy={busy} className="primary">
+          {busy && <span className="spinner" aria-hidden="true" />}
           {busy ? "Procesando saga…" : "Iniciar carga"}
         </button>
       </div>
-      {error && <p className="error">{error}</p>}
-      {live.data && <SagaTimeline saga={live.data} />}
+      <div aria-live="polite">
+        {error && <p className="error">{error}</p>}
+        {busy && !live.data && <Skeleton rows={3} height={18} />}
+        {live.data && <SagaTimeline saga={live.data} />}
+      </div>
     </section>
   );
 }

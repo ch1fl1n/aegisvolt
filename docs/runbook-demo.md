@@ -101,6 +101,7 @@ aws --endpoint-url http://localhost:4566 logs filter-log-events `
 uv venv observability/prefect/.venv --python 3.12
 uv pip install --python observability/prefect/.venv -r observability/prefect/requirements.txt
 $py = "observability/prefect/.venv/Scripts/python.exe"
+$env:PREFECT_HOME = "$PWD\observability\prefect\.home"   # base propia: evita 'Can't locate revision'
 & $py -m prefect server start                                    # terminal 1: UI :4200
 $env:PREFECT_API_URL = "http://127.0.0.1:4200/api"               # terminal 2
 & $py observability/prefect/health_flow.py --env dev             # Completed si todo sano
